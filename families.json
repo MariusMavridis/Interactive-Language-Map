@@ -1,0 +1,90 @@
+{
+  "Indo-European": [
+    "Afrikaans",
+    "Albanian",
+    "Armenian (Eastern)",
+    "Armenian (Western)",
+    "Bengali",
+    "Belorussian",
+    "Bosnian",
+    "Bulgarian",
+    "Catalan",
+    "Czech",
+    "Dutch",
+    "English",
+    "French",
+    "Gaelic (Scots)",
+    "German",
+    "Greek (Modern)",
+    "Gujarati",
+    "Hindi",
+    "Italian",
+    "Latvian",
+    "Lithuanian",
+    "Macedonian",
+    "Marathi",
+    "Nepali",
+    "Norwegian",
+    "Polish",
+    "Portuguese",
+    "Persian",
+    "Romanian",
+    "Russian",
+    "Serbian-Croatian",
+    "Sindhi",
+    "Slovene",
+    "Sinhala",
+    "Spanish",
+    "Slovak",
+    "Swedish",
+    "Tajik",
+    "Ukrainian",
+    "Welsh",
+    "Latgalian"
+  ],
+  "Afro-Asiatic": [
+    "Amharic",
+    "Arabic (Modern Standard)",
+    "Oromo (Boraana)",
+    "Qafar"
+  ],
+  "Nakh-Daghestanian": [
+    "Avar"
+  ],
+  "Altaic": [
+    "Azerbaijani",
+    "Bashkir",
+    "Chuvash",
+    "Kazakh",
+    "Kirghiz",
+    "Noghay",
+    "Turkmen",
+    "Turkish",
+    "Tatar",
+    "Uyghur"
+  ],
+  "Basque": [
+    "Basque"
+  ],
+  "Niger-Congo": [
+    "Bukusu"
+  ],
+  "Uralic": [
+    "Estonian",
+    "Finnish",
+    "Hungarian"
+  ],
+  "Kartvelian": [
+    "Georgian"
+  ],
+  "Austronesian": [
+    "Indonesian",
+    "Malay"
+  ],
+  "Dravidian": [
+    "Kannada",
+    "Malayalam",
+    "Telugu",
+    "Tamil"
+  ]
+}

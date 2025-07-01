@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Interactive language map of phonetic distances</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 18px; margin: 20px 120px; }
+        #map { height: 80vh;
+  width: 1500px;      
+  margin: 0 auto;  }; }
+        .controls { padding: 15px; }
+        .slider-container { margin-top: 10px; }
+    </style>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin=""
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="controls">
+        <h1>Interactive language map of phonetic distances</h1>
+        <p>
+            This page summarizes the results of a research project carried out as a 3-month Master's internship at the Institute for Cross-Disciplinary Physics and Complex Systems (IFISC), Palma de Mallorca, Spain, under the supervision of David Sánchez. I transcribed 67 translations of the Bible in the International Phonetic Alphabet, and computed the Wasserstein distances between the probability distributions of blocks of 3 consecutive phonemes (3-phones). The heatmap below shows the phonetic distance matrix obtained by this method, with clusters identified by a hierarchical clustering method, using the Ward linkage.
+        </p>
+	
+<div style="display: flex; gap: 20px; align-items: center;">
+  <img src="images/Clustermap_WS_all_ward.svg"  width="1200" height="1200" style="display: block; margin: 0 auto;"/>
+ 
+</div>
+<p>
+     We found a significant correlation between phonetic similarity and geographic proximity. The figure below illustrates this by plotting phonetic distance as a function of geographic distance, for all language pairs (left) and for Indo-European languages only (right). A logarithmic fit is shown in black.
+        </p>
+
+<div style="display: flex; justify-content: center; gap: 20px;">
+
+ <img src="images/WS_all_phongeo_fit.svg" width="600" height="600"  />
+<img src="images/WS_IE_phongeo_fit.svg"  width="600" height="600" />
+
+</div>
+
+	<p> The map below shows the approximate locations of all languages in our dataset. The Wasserstein distances between 3-phone probability distributions are represented as lines linking the different languages, which are coloured by family. Distance lines are coloured as a function of the distance value. Use the slider to change the distance threshold and show more or less distances.
+      </p>
+        <div class="slider-container">
+            <label for="threshold">Threshold: <span id="threshold-value">0.13</span></label><br />
+            <input type="range" id="threshold" min="0.04" max="0.18" step="0.005" value="0.13" />
+        </div>
+    </div>
+ 
+    <div id="map"></div>
+
+    <script>
+        const map = L.map('map').setView([20, 0], 2);
+
+        // Base map layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(map);
+
+        // Globals
+        let coords = {};
+        let distances = [];
+        let families = {};
+        let connectionLines = [];
+        let familyLayers = {};
+
+        // Palette couleurs famille
+        const colorPalette = [
+          'red', 'blue', 'green', 'orange', 'purple', 'darkred', 'cadetblue',
+          'darkblue', 'darkgreen', 'black', 'gray', 'darkpurple', 'lightgray'
+        ];
+
+        // Charger les données JSON
+        Promise.all([
+            fetch('coords.json').then(r => r.json()),
+            fetch('distances.json').then(r => r.json()),
+            fetch('families.json').then(r => r.json()),
+        ]).then(([loadedCoords, loadedDistances, loadedFamilies]) => {
+            coords = loadedCoords;
+            distances = loadedDistances;
+            families = loadedFamilies;
+
+            // Créer un layer group par famille, ajouter les marqueurs colorés
+            let i = 0;
+            for (const [family, langs] of Object.entries(families)) {
+                const layerGroup = L.layerGroup();
+                const color = colorPalette[i % colorPalette.length];
+                langs.forEach(lang => {
+                    if (coords[lang]) {
+                        L.circleMarker(coords[lang], {
+                            radius: 9,
+                            fillColor: color,
+                            color: 'black',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        })
+                        .bindPopup(lang)
+                        .addTo(layerGroup);
+                    }
+                });
+                familyLayers[family] = layerGroup;
+                layerGroup.addTo(map); // activé par défaut
+                i++;
+            }
+
+            // Ajouter contrôle des couches familles
+            L.control.layers(null, familyLayers, {collapsed: false}).addTo(map);
+
+            // Colorer les labels + checkbox dans le contrôle
+            const layersControl = document.querySelector('.leaflet-control-layers-list');
+            if (layersControl) {
+                const labels = layersControl.querySelectorAll('label');
+                labels.forEach((label, i) => {
+                    const color = colorPalette[i % colorPalette.length];
+                    label.style.color = color;
+                    const input = label.querySelector('input[type="checkbox"]');
+                    if (input) {
+                        input.style.accentColor = color;  // colorer la case si supporté
+                    }
+                });
+            }
+
+            // Met à jour les lignes selon seuil + familles actives, avec couleur fixée globale
+            function updateConnections(threshold) {
+                // Retirer anciennes lignes
+                connectionLines.forEach(line => map.removeLayer(line));
+                connectionLines = [];
+
+                const minDist = 0.04; // borne min fixe
+                const maxDist = 0.18;  // borne max fixe
+
+                // Familles actives visibles
+                const activeFamilies = Object.entries(familyLayers)
+                    .filter(([family, layer]) => map.hasLayer(layer))
+                    .map(([family]) => family);
+
+                // Map langue -> famille
+                const langToFamily = {};
+                for (const [family, langs] of Object.entries(families)) {
+                    langs.forEach(lang => {
+                        langToFamily[lang] = family;
+                    });
+                }
+
+                distances.forEach(({lang1, lang2, dist}) => {
+                    if (
+                        dist < threshold &&
+                        coords[lang1] && coords[lang2] &&
+                        activeFamilies.includes(langToFamily[lang1]) &&
+                        activeFamilies.includes(langToFamily[lang2])
+                    ) {
+                        let norm = (dist - minDist) / (maxDist - minDist);
+                        norm = Math.min(Math.max(norm, 0), 1);
+
+                        const red = Math.floor(255 * (1 - norm));
+                        const blue = Math.floor(255 * norm);
+                        const color = `rgb(${red},0,${blue})`;
+
+                        const polyline = L.polyline([coords[lang1], coords[lang2]], {
+                            color: color,
+                            weight: 3,
+                            opacity:1.5-norm,
+                        }).bindPopup(`${lang1} - ${lang2}: ${dist.toFixed(3)}`);
+
+                        polyline.addTo(map);
+                        connectionLines.push(polyline);
+                    }
+                });
+            }
+
+            // Initial update
+            updateConnections(parseFloat(document.getElementById('threshold').value));
+
+            // Mettre à jour sur changement du slider
+            document.getElementById('threshold').addEventListener('input', function () {
+                const val = parseFloat(this.value);
+                document.getElementById('threshold-value').textContent = val.toFixed(3);
+                updateConnections(val);
+            });
+
+            // Mettre à jour sur ajout/retrait couches familles
+            map.on('overlayadd', function () {
+                updateConnections(parseFloat(document.getElementById('threshold').value));
+            });
+            map.on('overlayremove', function () {
+                updateConnections(parseFloat(document.getElementById('threshold').value));
+            });
+        });
+    </script>
+</body>
+</html>
